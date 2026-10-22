@@ -2473,7 +2473,7 @@
     <script>
       "use strict";
       /* ============ 選號引擎 ============ */
-      function weightedSample(weights, rand, cnt) {
+      function weightedSample(weights, rand, cnt, keepOrder) { // keepOrder：保留抽出次序（實驗室攞嚟定膽用）；唔傳就照舊由小到大排序回傳（回測／其他卡靠呢個排序，唔可以變）
         var picked = [], n, k;
         for (k = 0; k < (cnt || 6); k++) {
           var tot = 0;
@@ -2486,17 +2486,17 @@
           }
           picked.push(chosen);
         }
-        return picked.sort(function (a, b) { return a - b; });
+        return keepOrder ? picked : picked.sort(function (a, b) { return a - b; });
       }
-      function randomSix(rand, cnt) {
+      function randomSix(rand, cnt, keepOrder) { // keepOrder：保留抽出次序（實驗室攞嚟定膽用）；唔傳就照舊排序回傳
         var s = {}, out = [], want = cnt || 6;
         while (out.length < want) { var n = 1 + Math.floor(rand() * 49); if (!s[n]) { s[n] = 1; out.push(n); } }
-        return out.sort(function (a, b) { return a - b; });
+        return keepOrder ? out : out.sort(function (a, b) { return a - b; });
       }
-      function genCombo(method, ctx, rand, weightsOverride, cnt) {
+      function genCombo(method, ctx, rand, weightsOverride, cnt, keepOrder) { // keepOrder 只畀實驗室顯示路徑用；回測唔傳，抽號次序同結果同改之前完全一樣
         cnt = cnt || 6;
         var w = new Array(50).fill(1), n;
-        if (weightsOverride) return weightedSample(weightsOverride, rand, cnt);
+        if (weightsOverride) return weightedSample(weightsOverride, rand, cnt, keepOrder);
         if (method === "hot") { for (n = 1; n <= 49; n++) w[n] = ctx.freq[n] + 1; }
         else if (method === "cold") { for (n = 1; n <= 49; n++) w[n] = ctx.omit[n] + 1; }
         else if (method === "master") {
@@ -2506,13 +2506,13 @@
         } else if (method === "balanced") {
           var lo = Math.floor(cnt / 2), target = ctx.medianSum * cnt / 6;
           for (var t = 0; t < 2000; t++) {
-            var c = randomSix(rand, cnt), odd = 0, big = 0, sum = 0;
+            var c = randomSix(rand, cnt, keepOrder), odd = 0, big = 0, sum = 0;
             c.forEach(function (x) { if (x % 2) odd++; if (x >= 25) big++; sum += x; });
             if (odd >= lo && odd <= cnt - lo && big >= lo && big <= cnt - lo && Math.abs(sum - target) <= 5 * cnt) return c;
           }
-          return randomSix(rand, cnt);
+          return randomSix(rand, cnt, keepOrder);
         }
-        return weightedSample(w, rand, cnt); // hot / cold / master / random（w 全 1）
+        return weightedSample(w, rand, cnt, keepOrder); // hot / cold / master / random（w 全 1）
       }
       function qimenDrawPool(y, m, d) { // 奇門遁甲攞號池：用指定日子當日 21:30（攪珠時間，亥時）起盤，同玄學分頁 computeQimenAt／runQimen 同一套簡化算法；
         // 吉門宮（生→開→休）排最前，其餘宮按門吉凶（半吉→凶）補足，攞晒 1–49 內號碼（中五宮冇門，佢嗰組號碼唔入池，同玄學卡一致）。純跟日子計，冇隨機成分。
@@ -2556,6 +2556,11 @@
         if (nb > 0) return name + " 膽拖（" + nb + "膽＋" + (s.length - nb) + "腳）：膽 " + s.slice(0, nb).join(", ") + "；腳 " + s.slice(nb).join(", ");
         return name + " " + (s.length === 6 ? "單式" : "複式") + "（" + s.length + "個）：" + s.join(", ");
       }
+      function comboCopyTextB(name, bankers, legs) { // 膽拖專用：膽由呼叫方按號碼池排名傳入（池頭嗰幾個真膽），唔再自己排序估邊幾個係膽；格式同 comboCopyText 膽拖分支完全一樣，膽／腳各自小到大列出
+        var b = bankers.slice().sort(function (x, y) { return x - y; });
+        var l = legs.slice().sort(function (x, y) { return x - y; });
+        return name + " 膽拖（" + b.length + "膽＋" + l.length + "腳）：膽 " + b.join(", ") + "；腳 " + l.join(", ");
+      }
       (function buildLab() {
         $("method-grid").innerHTML = METHODS.map(function (m) {
           return '<div class="card method-card"><h3 class="m-name">' + m.name + '</h3><p class="m-desc">' + m.desc +
@@ -2597,26 +2602,31 @@
         return h;
       }
       function genOne(id) {
-        var cnt = effPick(), c;
-        if (id === "qimen") { // 奇門遁甲：用下期攪珠日當日起盤攞號（池頭 cnt 個再排序，同玄學卡 renderBet 同一口徑），唔使隨機
-          c = NEXT ? qimenDrawPool(NEXT.y, NEXT.m, NEXT.d).slice(0, cnt).sort(function (a, b) { return a - b; })
-            : genCombo(id, FULL_CTX, Math.random, null, cnt);
+        var cnt = effPick(), c, raw;
+        if (id === "qimen") { // 奇門遁甲：用下期攪珠日當日起盤攞號（池頭 cnt 個就係排名次序，頭 BANKERS 個係膽），唔使隨機
+          raw = NEXT ? qimenDrawPool(NEXT.y, NEXT.m, NEXT.d).slice(0, cnt)
+            : genCombo(id, FULL_CTX, Math.random, null, cnt, true);
+          c = raw.slice().sort(function (a, b) { return a - b; }); // 單式／複式顯示用（由小到大，同改之前一樣）
         } else {
           var weights = id === "mystic" ? wuxingWeights(mysticDayEl).w : null;
-          c = genCombo(id, FULL_CTX, Math.random, weights, cnt);
+          raw = genCombo(id, FULL_CTX, Math.random, weights, cnt, true); // 保留生成次序：頭 BANKERS 個係膽（唔好用排序後嘅最細嗰幾個）
+          c = raw.slice().sort(function (a, b) { return a - b; }); // 單式／複式顯示用（由小到大，同改之前一樣）
         }
         var bets = curBets();
+        var mName = id;
+        METHODS.forEach(function (m) { if (m.id === id) mName = m.name; });
         if (useBanker()) {
-          $("out-" + id).innerHTML = '<span class="balls">' + bankerBallsHTML(c) + "</span>" + confHTML(c);
+          var bk = raw.slice(0, BANKERS).sort(function (a, b) { return a - b; }); // 膽：池頭／生成次序頭嗰幾個，組內由小到大排
+          var lg = raw.slice(BANKERS).sort(function (a, b) { return a - b; }); // 腳：其餘，組內由小到大排
+          $("out-" + id).innerHTML = '<span class="balls">' + bankerBallsHTML(bk.concat(lg)) + "</span>" + confHTML(c);
           $("cost-" + id).textContent = "膽拖 " + bets + " 注（" + BANKERS + " 個膽 ＋ " + LEGS + " 隻腳）· 全注 $" + fmt(bets * 10) + " · 半注 $" + fmt(bets * 5) + "（半注每注 $5，派彩減半）";
+          COMBO_TXT["lab-" + id] = comboCopyTextB(mName, bk, lg); // 複製同顯示用同一組膽
         } else {
           $("out-" + id).innerHTML = '<span class="balls">' + ballsHTML(c, null, false) + "</span>" + confHTML(c);
           $("cost-" + id).textContent = cnt === 6 ? "單式 1 注 · 全注成本 $10（單式不設半注）" :
             "複式 " + bets + " 注 · 全注 $" + fmt(bets * 10) + " · 半注 $" + fmt(bets * 5) + "（半注每注 $5，派彩減半）";
+          COMBO_TXT["lab-" + id] = comboCopyText(mName, c, 0);
         }
-        var mName = id;
-        METHODS.forEach(function (m) { if (m.id === id) mName = m.name; });
-        COMBO_TXT["lab-" + id] = comboCopyText(mName, c, useBanker() ? BANKERS : 0);
         var cpBtn = document.querySelector('[data-copy="lab-' + id + '"]');
         if (cpBtn) cpBtn.classList.remove("hidden");
       }
@@ -3056,15 +3066,18 @@
         var useB = st.mode === "banker" && st.cnt > 6;
         if (useB) clampLegs(st, pool.length); // 先按號碼池夾返腳數，成本先計得啱
         var total = useB ? st.bankers + st.legs : st.cnt; // 膽拖嗰陣顯示總數 = 膽 ＋ 腳
-        var nums = pool.slice(0, total).slice().sort(function (a, b) { return a - b; });
-        $(prefix + "-balls").innerHTML = (useB ? betBallsN(nums, st.bankers) : ballsHTML(nums, null, false)) + confHTML(nums);
+        var picked = pool.slice(0, total); // 號碼池排名次序：膽拖嗰陣頭 st.bankers 個就係膽（池頭真膽），其餘係腳
+        var nums = picked.slice().sort(function (a, b) { return a - b; });
+        var bkNums = useB ? picked.slice(0, st.bankers).sort(function (a, b) { return a - b; }) : null; // 膽：池頭嗰幾個，組內由小到大排
+        var lgNums = useB ? picked.slice(st.bankers).sort(function (a, b) { return a - b; }) : null; // 腳：池頭之後嗰啲，組內由小到大排
+        $(prefix + "-balls").innerHTML = (useB ? betBallsN(bkNums.concat(lgNums), st.bankers) : ballsHTML(nums, null, false)) + confHTML(nums);
         $(prefix + "-cost").textContent = betCostN(total, st.mode, st.bankers, st.legs);
         $(prefix + "-mode-seg").classList.toggle("hidden", st.cnt === 6);
         $(prefix + "-banker-seg").classList.toggle("hidden", !useB);
         $(prefix + "-legs-seg").classList.toggle("hidden", !useB);
         if (useB) $(prefix + "-legs-seg").innerHTML = legsBtnsHTML(st, pool.length);
         // 複製掣（第一次 render 時插入成本行下面，之後每次更新文字）
-        COMBO_TXT["bet-" + prefix] = comboCopyText(BET_NAME[prefix] || prefix, nums, useB ? st.bankers : 0);
+        COMBO_TXT["bet-" + prefix] = useB ? comboCopyTextB(BET_NAME[prefix] || prefix, bkNums, lgNums) : comboCopyText(BET_NAME[prefix] || prefix, nums, 0);
         var cpRow = $(prefix + "-copyrow");
         if (!cpRow) {
           cpRow = document.createElement("p");
