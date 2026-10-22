@@ -4014,11 +4014,15 @@
         }
         function betBallsHTML(b) {
           var h = '<span class="bt">' + betLabel(b) + "</span>";
-          for (var i = 0; i < b.nums.length; i++) {
-            var inner = ballHTML(b.nums[i], true);
-            if (b.bankers.indexOf(b.nums[i]) >= 0) inner = '<span class="ball-wrap banker">' + inner + '<span class="tag">膽</span></span>';
-            h += inner;
+          if (b.bankers.length > 0) { // 膽拖：膽嗰組行先（組內小到大）＋「拖」分隔，再到腳嗰組（小到大）；只改顯示次序，唔郁記錄數據
+            var bk = b.bankers.slice().sort(function (a, c) { return a - c; });
+            var legs = b.nums.filter(function (n) { return b.bankers.indexOf(n) < 0; }).sort(function (a, c) { return a - c; });
+            bk.forEach(function (n) { h += '<span class="ball-wrap banker">' + ballHTML(n, true) + '<span class="tag">膽</span></span>'; });
+            h += '<span class="plus" style="font-size:13.5px">拖</span>';
+            legs.forEach(function (n) { h += ballHTML(n, true); });
+            return h;
           }
+          for (var i = 0; i < b.nums.length; i++) h += ballHTML(b.nums[i], true);
           return h;
         }
         function betCopyText(b) { // 同「複製呢組」同一格式，貼返入號碼欄或者對獎分頁都識別到；膽／腳照原本嗰幾個寫明
