@@ -2830,6 +2830,7 @@
           var expFixed = (comb(6, 4) * comb(42, 1) * 9600 + comb(6, 4) * comb(42, 2) * 640 +
             comb(6, 3) * comb(42, 2) * 320 + comb(6, 3) * comb(42, 3) * 40) / comb(49, 6) * period * betsPer * ufactor;
           var h = "<thead><tr><th>方法</th><th class='num'>中 3 個</th><th class='num half'>中 3 個半</th><th class='num'>中 4 個</th><th class='num half'>中 4 個半</th><th class='num'>中 5 個</th><th class='num half'>中 5 個半</th><th class='num'>中 6 個</th><th class='num sum'>中 3 個或以上</th><th class='num'>平均中獎期數</th><th class='num'>與上次中獎相隔期數</th><th class='num grp-l'>" + period + " 期總成本</th><th class='num'>固定獎回收（四至七獎）</th><th class='num'>頭／二／三獎回收（實際派彩）</th><th class='num ret'>總回報率</th></tr></thead><tbody>";
+          var avgRows = []; // 六個方法各自顯示緊嘅數值，畀下面「六方法實際平均」行逐欄計平均用
           METHODS.forEach(function (m) {
             var r = res[m.id];
             // 七個欄係七個互斥獎項級別：「中 X 個」只計中 X 個正選兼冇中特別號（七／五／三獎），「中 X 個半」計中埋特別號（六／四／二獎），「中 6 個」＝頭獎。
@@ -2840,8 +2841,24 @@
             // 總回報率：用表入面顯示緊嘅（已四捨五入）固定獎回收＋頭／二／三獎回收 ÷ 總成本，讀者可以自己對返數
             var rateCell = (costT > 0 ? (Math.round(r.fixed) + Math.round(r.top)) / costT * 100 : 0).toFixed(1) + "%" +
               (r.topNoData ? "<br><span class='note'>有 " + r.topNoData + " 注未計金額，實際略高</span>" : "");
+            avgRows.push({ // 存低呢行顯示緊嘅數值（平均中獎期數同總回報率存顯示嗰個 1 位小數值，方便讀者照表手驗）；冇數值嘅欄存 null
+              c3: r[3] - r.h3, h3: r.h3, c4: r[4] - r.h4, h4: r.h4, c5: r[5] - r.h5, h5: r.h5, c6: r[6], t3: t3,
+              avgWin: t3 > 0 ? parseFloat((period / t3).toFixed(1)) : null, // 未中過顯示「—」，平均嗰陣跳過
+              gap: r.gap >= 0 ? r.gap : null, // 「全期未中」冇數值，平均嗰陣跳過
+              cost: costT, fixed: Math.round(r.fixed), top: Math.round(r.top),
+              rate: parseFloat((costT > 0 ? (Math.round(r.fixed) + Math.round(r.top)) / costT * 100 : 0).toFixed(1))
+            });
             h += "<tr><td><strong>" + m.name + "</strong></td><td class='num'>" + (r[3] - r.h3) + "</td><td class='num half'>" + r.h3 + "</td><td class='num'>" + (r[4] - r.h4) + "</td><td class='num half'>" + r.h4 + "</td><td class='num'>" + (r[5] - r.h5) + "</td><td class='num half'>" + r.h5 + "</td><td class='num'>" + r[6] + "</td><td class='num sum'><strong>" + t3 + " 期</strong></td><td class='num'>" + (t3 > 0 ? (period / t3).toFixed(1) + " 期" : "—") + "</td><td class='num'>" + (r.gap >= 0 ? r.gap + " 期" : "全期未中") + "</td><td class='num grp-l'>" + money(costT) + "</td><td class='num'>" + money(Math.round(r.fixed)) + "</td><td class='num'>" + topCell + "</td><td class='num ret'>" + rateCell + "</td></tr>";
           });
+          (function () { // 六方法實際平均：每一欄都係上面六個方法嗰欄顯示值嘅算術平均；某欄冇數值（—／全期未中）嘅行跳過，只用有數值嘅行加總相除；六行都冇數值嗰格顯示「—」
+            function avgOf(key) {
+              var vals = avgRows.map(function (x) { return x[key]; }).filter(function (v) { return v !== null; });
+              if (!vals.length) return null;
+              return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+            }
+            var aWin = avgOf("avgWin"), aGap = avgOf("gap");
+            h += "<tr><td><strong>六方法實際平均</strong></td><td class='num'>" + avgOf("c3").toFixed(1) + "</td><td class='num half'>" + avgOf("h3").toFixed(1) + "</td><td class='num'>" + avgOf("c4").toFixed(2) + "</td><td class='num half'>" + avgOf("h4").toFixed(2) + "</td><td class='num'>" + avgOf("c5").toFixed(3) + "</td><td class='num half'>" + avgOf("h5").toFixed(3) + "</td><td class='num'>" + avgOf("c6").toFixed(4) + "</td><td class='num sum'>" + avgOf("t3").toFixed(1) + " 期</td><td class='num'>" + (aWin !== null ? aWin.toFixed(1) + " 期" : "—") + "</td><td class='num'>" + (aGap !== null ? aGap.toFixed(1) + " 期" : "—") + "</td><td class='num grp-l'>" + money(Math.round(avgOf("cost"))) + "</td><td class='num'>" + money(Math.round(avgOf("fixed"))) + "</td><td class='num'>" + money(Math.round(avgOf("top"))) + "</td><td class='num ret'>" + avgOf("rate").toFixed(1) + "%</td></tr>";
+          })();
           h += "<tr><td>理論期望（純隨機，" + period + " 期）</td><td class='num'>" + (theo(3) - theoHalf(3)).toFixed(1) + "</td><td class='num half'>" + theoHalf(3).toFixed(1) + "</td><td class='num'>" + (theo(4) - theoHalf(4)).toFixed(2) + "</td><td class='num half'>" + theoHalf(4).toFixed(2) + "</td><td class='num'>" + (theo(5) - theoHalf(5)).toFixed(3) + "</td><td class='num half'>" + theoHalf(5).toFixed(3) + "</td><td class='num'>" + theo(6).toFixed(4) + "</td><td class='num sum'>" + (theo(3) + theo(4) + theo(5) + theo(6)).toFixed(1) + " 期</td><td class='num'>" + (function () { var tw = theo(3) + theo(4) + theo(5) + theo(6); return tw > 0 ? "約 " + (period / tw).toFixed(1) + " 期" : "—"; })() + "</td><td class='num'>" + (function () { var pW = (theo(3) + theo(4) + theo(5) + theo(6)) / period; return pW > 0 ? "約 " + ((1 - pW) / pW).toFixed(1) + " 期" : "—"; })() + "</td><td class='num grp-l'>" + money(costT) + "</td><td class='num'>約 " + money(Math.round(expFixed)) + "</td><td class='num'>—（浮動派彩，冇理論值）</td><td class='num ret'>約 " + (costT > 0 ? (expFixed / costT * 100).toFixed(1) : "0.0") + "%<br><span class='note'>只計固定獎；頭／二／三獎係浮動獎金冇理論值，夾埋先係總回報</span></td></tr>";
           $("bt-table").innerHTML = h + "</tbody>";
           BT_LAST = { html: h + "</tbody>", set: "最近 " + period + " 期 · 每組 " + pick + " 個號碼 · " + modeTxt + " · " + (half ? "半注 $5" : "全注 $10") + " · 每期成本 " + money(betsPer * unit) }; // 存低快照，釘選嗰陣用
