@@ -180,6 +180,7 @@
         font-size: 10px; font-weight: 700; line-height: 1;
         padding: 3px 5px; border-radius: 999px;
       }
+      .ball-wrap .tag.tl { right: auto; left: -8px; } /* 同一波要掛兩個標（膽＋特）嗰陣，第二個標改掛左上，唔好疊住 */
       .plus { color: var(--ink-faint); font-weight: 700; font-size: 18px; }
 
       /* ---------- 對獎 ---------- */
@@ -3778,8 +3779,10 @@
           var n = picks[i], isMain = d.nums.indexOf(n) >= 0, isSp = n === d.sp;
           var cls = "ball " + (BALL_COLORS[n] || "") + (isMain || isSp ? " hit" : " dim");
           var inner = '<span class="' + cls + '">' + n + "</span>";
-          if (isSp) inner = '<span class="ball-wrap">' + inner + '<span class="tag">特</span></span>';
-          else if (ckUseBanker() && i < CK_BANKERS) inner = '<span class="ball-wrap">' + inner + '<span class="tag">膽</span></span>';
+          var isBk = ckUseBanker() && i < CK_BANKERS; // 膽 = 輸入順序頭 CK_BANKERS 個（picks 冇排序）
+          if (isSp && isBk) inner = '<span class="ball-wrap">' + inner + '<span class="tag tl">膽</span><span class="tag">特</span></span>'; // 係膽又中特別號：兩個標都要出，唔好畀「特」遮咗「膽」
+          else if (isSp) inner = '<span class="ball-wrap">' + inner + '<span class="tag">特</span></span>';
+          else if (isBk) inner = '<span class="ball-wrap">' + inner + '<span class="tag">膽</span></span>';
           h += inner;
         }
         return h;
@@ -3829,7 +3832,7 @@
           ckPress("ck-mode-seg", "data-mode", "multi");
         }
         ckSyncMode();
-        $("ck-nums").value = c.all.join(" ");
+        $("ck-nums").value = (c.bankers ? c.bankers.concat(c.legs) : c.all).join(" "); // 有膽嗰陣必須「膽先行」寫入輸入欄：對獎係按輸入順序頭 CK_BANKERS 個當膽，唔可以跟 c.all 次序（基金記錄嘅 nums 係由細到大排，跟住寫會攞錯最細嗰幾個當膽）
       }
       $("ck-nums").addEventListener("paste", function () {
         var el = this;
