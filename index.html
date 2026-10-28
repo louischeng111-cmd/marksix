@@ -2316,16 +2316,37 @@
         return null;
       }
       var NEXT = nextDrawInfo();
+      /* 倒數目標：優先跟估計卡已核實嘅下期日期（NEXT_ESTIMATE.date）當晚 21:30 HKT 計，
+         唔再死計下一個星期二／四／六（金多寶期會取消中間常規攪珠日，例如 26/116 跳過 10-29 直達 10-31）；
+         只有當下期日期缺失／無效（格式錯、唔係真實日期、唔喺最新一期之後、或者嗰晚 21:30 已經過咗）嗰陣，
+         先退返去用 nextDrawInfo() 嘅星期二四六計法做後備。NEXT 本身唔郁，其他分頁同估計卡繼續照舊用。 */
+      function estimateDrawInfo() {
+        if (typeof NEXT_ESTIMATE === "undefined" || !NEXT_ESTIMATE || !NEXT_ESTIMATE.date) return null;
+        var parts = String(NEXT_ESTIMATE.date).split("-");
+        if (parts.length !== 3) return null;
+        var y = Number(parts[0]), m = Number(parts[1]), d = Number(parts[2]);
+        if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return null;
+        var chk = new Date(Date.UTC(y, m - 1, d));
+        if (chk.getUTCFullYear() !== y || chk.getUTCMonth() !== m - 1 || chk.getUTCDate() !== d) return null;
+        var dateStr = y + "-" + pad2(m) + "-" + pad2(d);
+        if (typeof DRAWS !== "undefined" && DRAWS && DRAWS[0] && !(dateStr > DRAWS[0].date)) return null;
+        var epoch = Date.UTC(y, m - 1, d, 13, 30, 0); // 21:30 HKT
+        if (!(epoch > Date.now())) return null;
+        return { epoch: epoch, dateStr: dateStr, y: y, m: m, d: d, wd: chk.getUTCDay() };
+      }
+      function countdownTargetInfo() { return estimateDrawInfo() || nextDrawInfo(); }
+      var CD_NEXT = countdownTargetInfo();
       function tickCountdown() {
-        if (!NEXT) return;
-        var diff = Math.max(0, NEXT.epoch - Date.now());
+        if (!CD_NEXT) return;
+        var diff = Math.max(0, CD_NEXT.epoch - Date.now());
         var days = Math.floor(diff / 86400000), hrs = Math.floor(diff % 86400000 / 3600000),
             min = Math.floor(diff % 3600000 / 60000), sec = Math.floor(diff % 60000 / 1000);
         $("cd-num").textContent = (days > 0 ? days + " 日 " : "") + pad2(hrs) + ":" + pad2(min) + ":" + pad2(sec);
-        if (diff === 0) NEXT = nextDrawInfo(), setTimeout(tickCountdown, 1000);
+        $("cd-when").textContent = CD_NEXT.dateStr.replace(/-/g, "/") + "（星期" + WEEK_CN[CD_NEXT.wd] + "）晚上 9:30";
+        if (diff === 0) CD_NEXT = countdownTargetInfo(), setTimeout(tickCountdown, 1000);
       }
-      if (NEXT) {
-        $("cd-when").textContent = NEXT.dateStr.replace(/-/g, "/") + "（星期" + WEEK_CN[NEXT.wd] + "）晚上 9:30";
+      if (CD_NEXT) {
+        $("cd-when").textContent = CD_NEXT.dateStr.replace(/-/g, "/") + "（星期" + WEEK_CN[CD_NEXT.wd] + "）晚上 9:30";
         tickCountdown(); setInterval(tickCountdown, 1000);
       }
 
