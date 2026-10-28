@@ -2336,6 +2336,10 @@
       }
       function countdownTargetInfo() { return estimateDrawInfo() || nextDrawInfo(); }
       var CD_NEXT = countdownTargetInfo();
+      /* 玄學分頁嘅下期攪珠日：同倒數同一套估計優先規則 — 優先用 estimateDrawInfo()（估計卡已核實嘅下期日期），
+         缺失／無效先退返 NEXT（星期二四六計法）。干支命盤標題連命盤、三合預設日期、奇門「用下期攪珠時間」一律用 MY_NEXT，
+         唔再同總覽估計卡／倒數打架（例如 26/116 跳過 10-29、直達 10-31）。 */
+      var MY_NEXT = estimateDrawInfo() || NEXT;
       function tickCountdown() {
         if (!CD_NEXT) return;
         var diff = Math.max(0, CD_NEXT.epoch - Date.now());
@@ -2971,18 +2975,18 @@
         return "複式 " + bets + " 注 · 全注 $" + fmt(bets * 10) + " · 半注 $" + fmt(bets * 5) + "（半注每注 $5，派彩減半）";
       }
       (function renderMystic() {
-        if (!NEXT) return;
-        var yp = yearPillar(NEXT.y), mp = monthPillar(NEXT.y, NEXT.m, NEXT.d), dp = dayPillar(NEXT.y, NEXT.m, NEXT.d);
+        if (!MY_NEXT) return;
+        var yp = yearPillar(MY_NEXT.y), mp = monthPillar(MY_NEXT.y, MY_NEXT.m, MY_NEXT.d), dp = dayPillar(MY_NEXT.y, MY_NEXT.m, MY_NEXT.d);
         var dayEl = STEM_EL[dp.stem]; mysticDayEl = dayEl;
         var clash = ZODIACS[(dp.branch + 6) % 12];
-        $("my-next-label").innerHTML = "下期攪珠：<strong>" + NEXT.dateStr.replace(/-/g, "/") + "（星期" + WEEK_CN[NEXT.wd] + "）</strong> · 月柱以節氣分界（節氣日期每年或相差一日）· 日柱以 1900-01-01 甲戌日為錨點順推。";
+        $("my-next-label").innerHTML = "下期攪珠：<strong>" + MY_NEXT.dateStr.replace(/-/g, "/") + "（星期" + WEEK_CN[MY_NEXT.wd] + "）</strong> · 月柱以節氣分界（節氣日期每年或相差一日）· 日柱以 1900-01-01 甲戌日為錨點順推。";
         $("my-pillars").innerHTML =
           '<div class="pillar"><div class="p-k">年 柱</div><div class="p-v">' + gz(yp) + '</div><div class="p-s">生肖' + ZODIACS[yp.branch] + " · 年干" + STEM_EL[yp.stem] + "</div></div>" +
           '<div class="pillar"><div class="p-k">月 柱</div><div class="p-v">' + gz(mp) + '</div><div class="p-s">月干' + STEM_EL[mp.stem] + "</div></div>" +
           '<div class="pillar"><div class="p-k">日 柱</div><div class="p-v">' + gz(dp) + '</div><div class="p-s">日干' + STEM_EL[dp.stem] + "</div></div>" +
           '<div class="pillar"><div class="p-k">財神方位</div><div class="p-v" style="font-size:23px;padding-top:5px">' + WEALTH_DIR[dp.stem] + '</div><div class="p-s">' + STEMS[dp.stem] + "日財神在" + WEALTH_DIR[dp.stem] + "</div></div>";
         $("my-kv").innerHTML =
-          "<span>生肖：<b>" + ZODIACS[yp.branch] + "</b>（" + NEXT.y + " 年）</span>" +
+          "<span>生肖：<b>" + ZODIACS[yp.branch] + "</b>（" + MY_NEXT.y + " 年）</span>" +
           "<span>日干五行：<b>" + dayEl + "</b></span>" +
           "<span>沖煞：日支「" + BRANCHES[dp.branch] + "」沖「" + BRANCHES[(dp.branch + 6) % 12] + "」，沖 <b>" + clash + "</b></span>" +
           "<span>財神方位：<b>" + WEALTH_DIR[dp.stem] + "</b>（民間日干財神歌）</span>";
@@ -3232,7 +3236,7 @@
       function luckBadge(l) { return '<span class="luck ' + (l === "吉" ? "luck-ji" : l === "凶" ? "luck-xiong" : "luck-ban") + '">' + l + "</span>"; }
       function nowLocalStr() { var n = new Date(); return n.getFullYear() + "-" + pad2(n.getMonth() + 1) + "-" + pad2(n.getDate()) + "T" + pad2(n.getHours()) + ":" + pad2(n.getMinutes()); }
       function qmSetNow() { $("qm-time").value = nowLocalStr(); }
-      function qmSetNext() { if (NEXT) $("qm-time").value = NEXT.dateStr + "T21:30"; }
+      function qmSetNext() { if (MY_NEXT) $("qm-time").value = MY_NEXT.dateStr + "T21:30"; }
       function runQimen() {
         var v = $("qm-time").value;
         if (!v) return;
@@ -3393,7 +3397,7 @@
       var DC = { cnt: 6, mode: "multi", bankers: 2, legs: 6 }, DC_POOL = null;
       $("dc-betctl").innerHTML = betSegsHTML("dc");
       wireBet("dc", DC, function () { return DC_POOL; });
-      function dcSetNext() { if (NEXT) $("dc-date").value = NEXT.dateStr; }
+      function dcSetNext() { if (MY_NEXT) $("dc-date").value = MY_NEXT.dateStr; }
       function dcSetQNow() { $("dc-qtime").value = nowLocalStr(); }
       function runDrawCombo() {
         var bz = computeBazi();
