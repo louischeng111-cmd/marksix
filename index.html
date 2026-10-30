@@ -4048,6 +4048,29 @@
               });
               continue;
             }
+            if (line.indexOf("膽") >= 0 || line.indexOf("腳") >= 0) { // 「膽…腳…」簡寫（冇標題／冒號嗰種，例如「膽7 18 25 27 43腳2 3 8 …」）：膽＝最後一個「膽」字後、「腳」字前嘅號碼，腳＝嗰個「腳」字後嘅號碼；標籤前後有冇空格／冒號／分號都認。只喺基金輸入度認，唔郁共用嘅 parseComboText（對獎嗰邊唔受影響）
+              var bIdx = line.lastIndexOf("膽");
+              var lIdx = bIdx >= 0 ? line.indexOf("腳", bIdx + 1) : -1;
+              if (bIdx < 0 || lIdx < 0) return { error: "第 " + (li + 1) + " 行號碼唔夠 6 個（或者格式認唔到），檢查下再試。" };
+              var bNums = [], lNums = [], seenAll = {};
+              (line.slice(bIdx + 1, lIdx).match(/\d+/g) || []).forEach(function (x) {
+                var n = parseInt(x, 10);
+                if (n >= 1 && n <= 49 && !seenAll[n]) { seenAll[n] = 1; bNums.push(n); }
+              });
+              (line.slice(lIdx + 1).match(/\d+/g) || []).forEach(function (x) {
+                var n = parseInt(x, 10);
+                if (n >= 1 && n <= 49 && !seenAll[n]) { seenAll[n] = 1; lNums.push(n); }
+              });
+              if (!bNums.length || !lNums.length) return { error: "第 " + (li + 1) + " 行號碼唔夠 6 個（或者格式認唔到），檢查下再試。" };
+              if (bNums.length > 5) return { error: "第 " + (li + 1) + " 行膽多過 5 個，一注最多 5 個膽，檢查下再試。" };
+              if (bNums.length + lNums.length < 6) return { error: "第 " + (li + 1) + " 行號碼唔夠 6 個（或者格式認唔到），檢查下再試。" };
+              if (bNums.length + lNums.length > 17) return { error: "第 " + (li + 1) + " 行號碼多過 17 個，一注最多記 17 個（5 膽＋12 腳）。" };
+              bets.push({
+                nums: bNums.concat(lNums).sort(function (a, b) { return a - b; }),
+                bankers: bNums.slice().sort(function (a, b) { return a - b; })
+              });
+              continue;
+            }
             var ns = [], seen = {};
             (line.match(/\d+/g) || []).forEach(function (x) {
               var n = parseInt(x, 10);
