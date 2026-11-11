@@ -343,6 +343,13 @@
       .qm-cell .q-sub { font-size: 12.5px; color: var(--ink-dim); line-height: 1.55; }
       .luck { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; vertical-align: middle; }
       .luck-ji { background: #2f8f52; } .luck-ban { background: #a67c2e; } .luck-xiong { background: #b03024; }
+      .qm-read { margin: 14px 0 4px; }
+      .qm-read h3 { font-family: var(--serif); font-size: 17px; font-weight: 900; margin: 0 0 6px; }
+      .qm-read .qr-sum { font-size: 14.5px; line-height: 1.65; margin: 0 0 4px; }
+      .qm-read .qr-item { border-top: 1px dashed var(--line-soft); padding: 8px 0; font-size: 14px; line-height: 1.65; }
+      .qm-read .qr-item b { color: var(--gold-bright); }
+      .qm-plate-line { font-size: 14.5px; color: var(--ink); margin: 12px 0 0; }
+      .qm-plate-line b { color: var(--gold-bright); }
       .stroke-row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin: 8px 0; }
       .stroke-row .s-char { font-family: var(--serif); font-size: 22px; font-weight: 700; width: 34px; text-align: center; }
       .stroke-row input[type="number"] { width: 96px; }
@@ -695,8 +702,8 @@
             </div>
           </div>
 
-          <h2 class="sec-title">奇門遁甲 · 吉門號（簡化趣味版）</h2>
-          <p class="sec-sub">入問事時間（預設而家查詢嗰一刻），按節氣定陰陽遁、日干支定局數起盤，飛布三奇六儀、九星、八門、八神，睇八門吉凶，再攞吉門落宮嘅號碼。<strong>呢個係簡化趣味版，唔係傳統完整起局</strong>（旬首以甲代戊、中宮寄坤、冇拆補置閏），當係認識奇門盤結構嘅遊戲就好。</p>
+          <h2 class="sec-title">奇門遁甲 · 吉門號（完整起盤版）</h2>
+          <p class="sec-sub">入問事時間（預設而家查詢嗰一刻），按太陽黃經計<strong>真節氣</strong>定陰陽遁、<strong>拆補法</strong>分上中下元定局數起盤：地盤飛布三奇六儀，天盤九星隨值符轉 — <strong>值符跟時柱所屬旬首、隨時干落宮，值使門隨時支推宮</strong>，八神由值符起順逆布，逐宮再解吉凶同格局（伏吟、反吟、三奇得使等），最後攞吉門落宮嘅號碼。起盤跟足時家奇門轉盤法，唔再係舊版每日遞進嘅簡化局數；之不過點起盤都好，攪珠始終隨機，<strong>唔會提高中獎機率</strong>，當係認識奇門盤結構嘅遊戲就好。</p>
           <div class="card">
             <div class="form-row qm-row" style="align-items:end">
               <div>
@@ -710,8 +717,10 @@
             <div id="qm-out" class="hidden" style="margin-top:16px">
               <div class="kv" id="qm-kv"></div>
               <div class="qm-grid" id="qm-grid"></div>
+              <div class="qm-read" id="qm-read"></div>
               <p class="note" id="qm-rule" style="font-size:14.5px;color:var(--ink)"></p>
               <div id="qm-betctl" style="margin-top:12px"></div>
+              <p class="qm-plate-line" id="qm-plate-line"></p>
               <div class="balls" id="qm-balls" style="margin:10px 0"></div>
               <p class="note" id="qm-cost" style="margin:0"></p>
             </div>
@@ -3219,7 +3228,7 @@
       $("bz-go").addEventListener("click", runBazi);
       runBazi();
 
-      /* ============ 奇門遁甲（簡化趣味版） ============ */
+      /* ============ 奇門遁甲（完整起盤版） ============ */
       var QM_PAL_NAME = { 1: "坎一宮", 2: "坤二宮", 3: "震三宮", 4: "巽四宮", 5: "中五宮", 6: "乾六宮", 7: "兌七宮", 8: "艮八宮", 9: "離九宮" };
       var QM_STAR = { 1: "天蓬", 2: "天芮", 3: "天沖", 4: "天輔", 5: "天禽", 6: "天心", 7: "天柱", 8: "天任", 9: "天英" }; // 九星地盤（按宮固定）
       var QM_DOOR = { 1: "休", 2: "死", 3: "傷", 4: "杜", 6: "開", 7: "驚", 8: "生", 9: "景" }; // 八門地盤（按宮固定，中宮無門）
@@ -3241,29 +3250,56 @@
       function nowLocalStr() { var n = new Date(); return n.getFullYear() + "-" + pad2(n.getMonth() + 1) + "-" + pad2(n.getDate()) + "T" + pad2(n.getHours()) + ":" + pad2(n.getMinutes()); }
       function qmSetNow() { $("qm-time").value = nowLocalStr(); }
       function qmSetNext() { if (MY_NEXT) $("qm-time").value = MY_NEXT.dateStr + "T21:30"; }
-      function runQimen() {
-        var v = $("qm-time").value;
-        if (!v) return;
-        var parts = v.split("T"), dd = parts[0].split("-").map(Number), tt = (parts[1] || "21:30").split(":").map(Number);
-        var y = dd[0], m = dd[1], d = dd[2], hr = tt[0] || 0;
-        var yang = (m === 12 && d >= 22) || m < 6 || (m === 6 && d < 21); // 冬至後陽遁、夏至後陰遁（近似日）
-        var nDays = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1900, 0, 1)) / 86400000);
-        var idx60 = (((10 + nDays) % 60) + 60) % 60; // 1900-01-01 = 甲戌（六十甲子序 10）
-        var ju = idx60 % 9 + 1; // 簡化定局：日干支序數定局
+      /* ---------- 完整起盤：真節氣（太陽黃經）＋拆補法三元定局 ---------- */
+      var QM_TERM_NAMES = ["小寒", "大寒", "立春", "雨水", "驚蟄", "春分", "清明", "穀雨", "立夏", "小滿", "芒種", "夏至", "小暑", "大暑", "立秋", "處暑", "白露", "秋分", "寒露", "霜降", "立冬", "小雪", "大雪", "冬至"];
+      var QM_TERM_SEED = [0, 21208, 42467, 63836, 85337, 107014, 128867, 150921, 173149, 195551, 218072, 240693, 263343, 285989, 308563, 331033, 353350, 375494, 397447, 419210, 440795, 462224, 483532, 504758]; // 經典曆法近似值（分鐘），只用作迭代求太陽黃經嘅起點
+      var QM_TERM_JU = { "冬至": [1, 7, 4], "小寒": [2, 8, 5], "大寒": [3, 9, 6], "立春": [8, 5, 2], "雨水": [9, 6, 3], "驚蟄": [1, 7, 4], "春分": [3, 9, 6], "清明": [4, 1, 7], "穀雨": [5, 2, 8], "立夏": [4, 1, 7], "小滿": [5, 2, 8], "芒種": [6, 3, 9], "夏至": [9, 3, 6], "小暑": [8, 2, 5], "大暑": [7, 1, 4], "立秋": [2, 5, 8], "處暑": [1, 4, 7], "白露": [9, 3, 6], "秋分": [7, 1, 4], "寒露": [6, 9, 3], "霜降": [5, 8, 2], "立冬": [6, 9, 3], "小雪": [5, 8, 2], "大雪": [4, 7, 1] }; // 每節氣上／中／下元局數（坊間通用定局表）
+      var QM_TERM_YANG = { "冬至": 1, "小寒": 1, "大寒": 1, "立春": 1, "雨水": 1, "驚蟄": 1, "春分": 1, "清明": 1, "穀雨": 1, "立夏": 1, "小滿": 1, "芒種": 1 }; // 冬至至芒種陽遁，夏至至大雪陰遁
+      var QM_XUN_INSTR = ["戊", "己", "庚", "辛", "壬", "癸"]; // 六旬旬首所遁之儀：甲子旬戊、甲戌旬己、甲申旬庚、甲午旬辛、甲辰旬壬、甲寅旬癸
+      function qmSunLong(ms) { // 太陽視黃經（度）：低精度天文算法，誤差約 0.01 度，交節時刻誤差約 ±10 分鐘內
+        var T = (ms / 86400000 + 2440587.5 - 2451545.0) / 36525;
+        var L0 = 280.46646 + T * (36000.76983 + 0.0003032 * T);
+        var M = (357.52911 + T * (35999.05029 - 0.0001537 * T)) * Math.PI / 180;
+        var C = (1.914602 - T * (0.004817 + 0.000014 * T)) * Math.sin(M) + (0.019993 - 0.000101 * T) * Math.sin(2 * M) + 0.000289 * Math.sin(3 * M);
+        var om = (125.04 - 1934.136 * T) * Math.PI / 180;
+        return (((L0 + C - 0.00569 - 0.00478 * Math.sin(om)) % 360) + 360) % 360;
+      }
+      function qmTermMs(y, n) { // y 年第 n 個節氣（0=小寒 … 23=冬至）交節時刻（毫秒）：由近似值起點迭代，令太陽黃經到達該節氣角度（285°+15°n）
+        var target = (285 + 15 * n) % 360, t = Date.UTC(1900, 0, 6, 2, 5) + 31556925974.7 * (y - 1900) + QM_TERM_SEED[n] * 60000, i, diff;
+        for (i = 0; i < 6; i++) { diff = ((qmSunLong(t) - target + 540) % 360) - 180; if (Math.abs(diff) < 0.0005) break; t -= diff / 0.98565 * 86400000; }
+        return t;
+      }
+      function qmBuildChart(y, m, d, hr, mi) { // 時家奇門完整起盤（轉盤法）：真節氣定遁、拆補法定三元局數、值符隨旬首／時干、值使隨時支
+        var qMs = new Date(y, m - 1, d, hr, mi).getTime(), terms = [], yy, n, i;
+        for (yy = y - 1; yy <= y + 1; yy++) for (n = 0; n < 24; n++) terms.push({ name: QM_TERM_NAMES[n], ms: qmTermMs(yy, n) });
+        terms.sort(function (a, b) { return a.ms - b.ms; });
+        var cur = terms[0];
+        for (i = 0; i < terms.length; i++) { if (terms[i].ms <= qMs) cur = terms[i]; else break; }
+        var yuanIdx = Math.min(2, Math.floor((qMs - cur.ms) / 86400000 / 5)); // 拆補法：交節後第 0–4 日上元、5–9 日中元、10 日起下元
+        var yang = !!QM_TERM_YANG[cur.name], ju = QM_TERM_JU[cur.name][yuanIdx];
         var dayP = dayPillar(y, m, d);
         var hb = Math.floor(((hr + 1) % 24) / 2);
         var hp = hourPillar(dayP.stem, hb);
+        var idx60 = 0; for (n = 0; n < 60; n++) if (n % 10 === hp.stem && n % 12 === hp.branch) idx60 = n;
+        var xunStart = idx60 - (idx60 % 10), xunInstr = QM_XUN_INSTR[xunStart / 10], xunBranch = xunStart % 12; // 時柱所屬旬嘅旬首同所遁之儀
         var INSTR = ["戊", "己", "庚", "辛", "壬", "癸", "丁", "丙", "乙"], ground = {}, k, pal;
-        for (k = 0; k < 9; k++) { pal = (((ju - 1 + (yang ? k : -k)) % 9) + 9) % 9 + 1; ground[pal] = INSTR[k]; }
+        for (k = 0; k < 9; k++) { pal = (((ju - 1 + (yang ? k : -k)) % 9) + 9) % 9 + 1; ground[pal] = INSTR[k]; } // 地盤三奇六儀：陽遁順宮數、陰遁逆宮數
         function findPal(ch) { for (var p = 1; p <= 9; p++) if (ground[p] === ch) return p; return 5; }
-        var pWu = findPal("戊"); if (pWu === 5) pWu = 2; // 旬首儀戊（甲隱於戊）；落中宮寄坤二宮（簡化）
-        var hourChar = hp.stem === 0 ? "戊" : STEMS[hp.stem];
+        var pXun = findPal(xunInstr), ringXun = pXun === 5 ? 2 : pXun; // 旬首儀落中宮嗰陣，天禽／值使寄坤二宮
+        var zhiFuStar = QM_STAR[pXun], zhiShiDoor = QM_DOOR[ringXun];
+        var hourChar = hp.stem === 0 ? xunInstr : STEMS[hp.stem]; // 時干為甲嗰陣，甲遁於旬首儀
         var pHour = findPal(hourChar); if (pHour === 5) pHour = 2;
-        var zhiFuStar = QM_STAR[pWu], zhiShiDoor = QM_DOOR[pWu];
-        var stars = rotateRing(QM_STAR, QM_RING.indexOf(pHour) - QM_RING.indexOf(pWu)); stars[5] = "天禽";
-        var doors = rotateRing(QM_DOOR, QM_RING.indexOf(QM_BRANCH_PAL[hb]) - QM_RING.indexOf(pWu));
+        var starShift = QM_RING.indexOf(pHour) - QM_RING.indexOf(ringXun);
+        var stars = rotateRing(QM_STAR, starShift); stars[5] = "天禽"; // 值符星隨時干落宮，九星天盤隨之轉
+        var heaven = {}; // 天盤干：隨星帶行嘅原地盤儀
+        QM_RING.forEach(function (p) { heaven[p] = ground[QM_RING[(((QM_RING.indexOf(p) - starShift) % 8) + 8) % 8]]; });
+        var ruiPal = 2; QM_RING.forEach(function (p) { if (stars[p] === "天芮") ruiPal = p; });
+        heaven[5] = heaven[ruiPal]; // 天禽寄天芮同行，天盤干跟天芮
+        var posInXun = (((hb - xunBranch) % 12) + 12) % 12; // 時支喺本旬入面嘅序（0 起）
+        var zhiShiPal = QM_RING[(((QM_RING.indexOf(ringXun) + (yang ? posInXun : -posInXun)) % 8) + 8) % 8]; // 值使門由旬首宮起，陽順陰逆數到時支落宮
+        var doors = rotateRing(QM_DOOR, QM_RING.indexOf(zhiShiPal) - QM_RING.indexOf(ringXun));
         var gods = {}, gi;
-        for (gi = 0; gi < 8; gi++) gods[QM_RING[(((QM_RING.indexOf(pHour) + (yang ? gi : -gi)) % 8) + 8) % 8]] = QM_GODS[gi]; // 值符起，陽遁順布、陰遁逆布
+        for (gi = 0; gi < 8; gi++) gods[QM_RING[(((QM_RING.indexOf(pHour) + (yang ? gi : -gi)) % 8) + 8) % 8]] = QM_GODS[gi]; // 八神：值符神坐值符落宮，陽遁順布、陰遁逆布
         var doorRank = { "生": 0, "開": 1, "休": 2 };
         var good = QM_RING.filter(function (p) { return doorRank[doors[p]] !== undefined; })
           .sort(function (a, b) { return doorRank[doors[a]] - doorRank[doors[b]]; });
@@ -3273,22 +3309,89 @@
         var others = QM_RING.filter(function (p) { return doorRank[doors[p]] === undefined; })
           .sort(function (a, b) { return luckRank[QM_DOOR_LUCK[doors[a]]] - luckRank[QM_DOOR_LUCK[doors[b]]]; });
         others.forEach(function (p) { for (var x = p; x <= 49; x += 9) pool.push(x); }); // 吉門宮排最前；其餘宮按門吉凶（半吉 → 凶）補足，膽拖揀多腳嗰陣先會攞到
-        QM_POOL = pool;
+        return { yang: yang, ju: ju, term: cur.name, yuan: ["上元", "中元", "下元"][yuanIdx], dayP: dayP, hp: hp, hb: hb,
+          xun: STEMS[xunStart % 10] + BRANCHES[xunBranch], xunInstr: xunInstr, ground: ground, heaven: heaven, stars: stars, doors: doors, gods: gods,
+          zhiFuStar: zhiFuStar, zhiFuPal: pHour, zhiShiDoor: zhiShiDoor, zhiShiPal: zhiShiPal, good: good, pool: pool };
+      }
+      /* ---------- 逐宮解讀：門／星／神吉凶＋格局 ---------- */
+      var QM_PAL_EL = { 1: "水", 2: "土", 3: "木", 4: "木", 5: "土", 6: "金", 7: "金", 8: "土", 9: "火" };
+      var QM_DOOR_EL = { "休": "水", "生": "土", "死": "土", "傷": "木", "杜": "木", "開": "金", "驚": "金", "景": "火" };
+      var QM_GOD_LUCK = { "值符": "吉", "騰蛇": "凶", "太陰": "吉", "六合": "吉", "白虎": "凶", "玄武": "凶", "九地": "半吉", "九天": "吉" };
+      var QM_DOOR_MEAN = { "開": "主開拓、事業開展、求職求官", "休": "主休養生息、貴人相助、人事和合", "生": "主財運、生意交易、置業求財", "景": "主文書名聲、考試消息、宣傳", "杜": "主閉塞隱藏、保密躲避、專門技術", "傷": "主損傷競爭、討債捕獵、投機賭博", "驚": "主驚恐虛驚、口舌官非、訴訟", "死": "主停滯了結、喪病舊事、不宜進取" };
+      var QM_STAR_MEAN = { "天蓬": "主盜賊破財、宜守不宜攻", "天芮": "主疾病師徒、宜求醫問學", "天沖": "主衝動迅速、宜主動出擊", "天輔": "主文教輔助、貴人提攜", "天禽": "主中正統御、四方來朝", "天心": "主醫藥權謀、精明決斷", "天柱": "主口舌破敗、宜低調防守", "天任": "主穩重任事、田產積累", "天英": "主名聲火光、虛名急躁" };
+      var QM_GOD_MEAN = { "值符": "值符為八神之首，主貴人統帥、大事可為", "騰蛇": "騰蛇主虛驚怪異、纏繞反覆", "太陰": "太陰主暗中庇護、密謀策劃", "六合": "六合主和合婚姻、中介交易", "白虎": "白虎主血光傷災、剛猛衝突", "玄武": "玄武主盜失暧昧、暗昧欺瞞", "九地": "九地主堅守潛藏、長久積蓄", "九天": "九天主高遠揚名、主動進取" };
+      var QM_OPP = { 1: 9, 9: 1, 2: 8, 8: 2, 3: 7, 7: 3, 4: 6, 6: 4 }; // 對宮表
+      function qmPalaceRead(c, p) { // 回傳 { rating, text, pats }：評級（吉／半吉／平／凶）、門星神意義、格局列表
+        var star = c.stars[p], hi = c.heaven[p], gi = c.ground[p];
+        var door = p === 5 ? null : c.doors[p], god = p === 5 ? null : c.gods[p];
+        var score = 0, parts = [], pats = [], q, srcPal = null;
+        for (q = 1; q <= 9; q++) if (c.ground[q] === hi) srcPal = q; // 天盤干原本地盤所在宮（干唯一，可反查）
+        if (door) { var dl = QM_DOOR_LUCK[door]; score += dl === "吉" ? 2 : dl === "凶" ? -2 : 0; parts.push(door + "門（" + dl + "）" + QM_DOOR_MEAN[door]); }
+        var sl = QM_STAR_LUCK[star]; score += sl === "吉" ? 1 : sl === "凶" ? -1 : 0; parts.push(star + "星（" + sl + "）" + QM_STAR_MEAN[star]);
+        if (god) { var gl = QM_GOD_LUCK[god]; score += gl === "吉" ? 1 : gl === "凶" ? -1 : 0; parts.push(god + "（" + gl + "神）" + QM_GOD_MEAN[god]); }
+        if (hi === gi) pats.push("伏吟：天盤干返本宮，主靜止停滯、宜守候");
+        else if (p !== 5 && QM_OPP[p] === srcPal) pats.push("反吟：天盤干來自對宮，主反覆變動、事與願違");
+        var isQi = hi === "乙" || hi === "丙" || hi === "丁";
+        if (isQi && door && QM_DOOR_LUCK[door] === "吉") pats.push("三奇得使：" + hi + "奇臨吉門，坊間視為最利求事嘅格局之一");
+        else if (isQi) pats.push("三奇臨宮：天盤見" + hi + "奇，主靈活轉機");
+        if (hi === "戊" && gi === "丙") pats.push("青龍返首：天盤戊加地盤丙，大吉，主貴人回頭、舊事有望");
+        if (hi === "丙" && gi === "戊") pats.push("飛鳥跌穴：天盤丙加地盤戊，大吉，主機會速至、事半功倍");
+        if (hi === "丁" && p === c.zhiShiPal) pats.push("玉女守門：丁奇臨值使門，主暗貴相助、宜密行其事");
+        if (door && EL_CTRL[QM_DOOR_EL[door]] === QM_PAL_EL[p]) pats.push("門迫：" + door + "門五行剋宮位五行，此宮受壓、力量打折");
+        var rating = score >= 3 ? "吉" : score >= 1 ? "半吉" : score === 0 ? "平" : "凶";
+        return { rating: rating, text: parts.join("；") + "。", pats: pats };
+      }
+      function runQimen() {
+        var v = $("qm-time").value;
+        if (!v) return;
+        var parts = v.split("T"), dd = parts[0].split("-").map(Number), tt = (parts[1] || "21:30").split(":").map(Number);
+        var y = dd[0], m = dd[1], d = dd[2], hr = tt[0] || 0, mi = tt[1] || 0;
+        var c = qmBuildChart(y, m, d, hr, mi);
+        QM_POOL = c.pool;
         $("qm-kv").innerHTML =
-          "<span>問事日柱：<b>" + gz(dayP) + "</b></span>" +
-          "<span>時柱：<b>" + gz(hp) + "</b>（" + BRANCHES[hb] + "時）</span>" +
-          "<span><b>" + (yang ? "陽遁" : "陰遁") + " " + ju + " 局</b></span>" +
-          "<span>值符：<b>" + zhiFuStar + "</b>（落 " + QM_PAL_NAME[pHour] + "）</span>" +
-          "<span>值使：<b>" + zhiShiDoor + "門</b>（落 " + QM_PAL_NAME[QM_BRANCH_PAL[hb]] + "）</span>" +
-          "<span>吉門：<b>" + good.map(function (p) { return doors[p] + "門 · " + QM_PAL_NAME[p]; }).join("、") + "</b></span>";
+          "<span>節氣：<b>" + c.term + " · " + c.yuan + "</b></span>" +
+          "<span>問事日柱：<b>" + gz(c.dayP) + "</b></span>" +
+          "<span>時柱：<b>" + gz(c.hp) + "</b>（" + BRANCHES[c.hb] + "時）</span>" +
+          "<span><b>" + (c.yang ? "陽遁" : "陰遁") + " " + c.ju + " 局</b></span>" +
+          "<span>旬首：<b>" + c.xun + "</b>（甲遁" + c.xunInstr + "）</span>" +
+          "<span>值符：<b>" + c.zhiFuStar + "</b>（落 " + QM_PAL_NAME[c.zhiFuPal] + "）</span>" +
+          "<span>值使：<b>" + c.zhiShiDoor + "門</b>（落 " + QM_PAL_NAME[c.zhiShiPal] + "）</span>" +
+          "<span>吉門：<b>" + c.good.map(function (p) { return c.doors[p] + "門 · " + QM_PAL_NAME[p]; }).join("、") + "</b></span>";
         $("qm-grid").innerHTML = QM_ORDER.map(function (p) {
-          if (p === 5) return '<div class="qm-cell"><div class="q-pal">中五宮</div><div class="q-door" style="font-size:17px">' + (yang ? "陽遁" : "陰遁") + ju + ' 局</div><div class="q-sub">值符 ' + zhiFuStar + "<br>值使 " + zhiShiDoor + "門<br>地盤 " + ground[5] + "</div></div>";
-          var door = doors[p], dl = QM_DOOR_LUCK[door], star = stars[p];
-          return '<div class="qm-cell' + (dl === "吉" ? " good" : "") + '"><div class="q-pal">' + QM_PAL_NAME[p] + '</div>' +
+          if (p === 5) return '<div class="qm-cell"><div class="q-pal">中五宮</div><div class="q-door" style="font-size:17px">' + (c.yang ? "陽遁" : "陰遁") + c.ju + ' 局</div><div class="q-sub">值符 ' + c.zhiFuStar + "<br>值使 " + c.zhiShiDoor + "門<br>天盤 " + c.heaven[5] + " · 地盤 " + c.ground[5] + "</div></div>";
+          var door = c.doors[p], dl = QM_DOOR_LUCK[door], star = c.stars[p];
+          var tags = (p === c.zhiFuPal ? " · 值符" : "") + (p === c.zhiShiPal ? " · 值使" : "");
+          return '<div class="qm-cell' + (dl === "吉" ? " good" : "") + '"><div class="q-pal">' + QM_PAL_NAME[p] + tags + '</div>' +
             '<div class="q-door">' + door + "門 " + luckBadge(dl) + '</div>' +
-            '<div class="q-sub">' + star + "（" + QM_STAR_LUCK[star] + "）· " + (gods[p] || "") + "<br>地盤 " + ground[p] + "</div></div>";
+            '<div class="q-sub">' + star + "（" + QM_STAR_LUCK[star] + "）· " + (c.gods[p] || "") + "<br>天盤 " + c.heaven[p] + " · 地盤 " + c.ground[p] + "</div></div>";
         }).join("");
-        $("qm-rule").innerHTML = "取號規則：吉門優先次序 <strong>生門 → 開門 → 休門</strong>；每宮以宮位數為基數，+9 遞增（例如八宮：8、17、26、35、44），攞晒 1–49 內嘅號碼，逐宮補足，再由小到大排，按你揀嘅數量攞最前嗰啲（單式／複式 6／7／8 個；膽拖就膽數 ＋ 你揀嘅腳數，最多 12 隻腳）。攞嘅數量多過吉門宮號碼嗰陣，會按其餘門嘅吉凶次序（半吉門 → 凶門）逐宮補足。金框係吉門落宮。盤同號碼都係簡化趣味推演 — 奇門盤點轉，攪珠機都唔會跟住轉。";
+        var reads = {}, allFuyin = true, allFanyin = true, qiShi = [];
+        QM_ORDER.forEach(function (p) {
+          reads[p] = qmPalaceRead(c, p);
+          if (p !== 5) {
+            if (c.heaven[p] !== c.ground[p]) allFuyin = false;
+            var sp = null, q; for (q = 1; q <= 9; q++) if (c.ground[q] === c.heaven[p]) sp = q;
+            if (QM_OPP[p] !== sp) allFanyin = false;
+            if (reads[p].pats.some(function (t) { return t.indexOf("三奇得使") === 0; })) qiShi.push(p);
+          }
+        });
+        var sumBits = [];
+        if (allFuyin) sumBits.push("成盤<strong>伏吟</strong>：外圈八宮天盤干全數返本宮，九星八門俱歸本位 — 主靜止停滯，坊間解作宜守候觀望、不宜妄動");
+        if (allFanyin) sumBits.push("成盤<strong>反吟</strong>：外圈八宮天盤干全數來自對宮 — 主反覆變動，解作事多往返、難一擊即中");
+        if (qiShi.length) sumBits.push("<strong>三奇得使</strong>見於" + qiShi.map(function (p) { return QM_PAL_NAME[p]; }).join("、") + "，係成盤較突出嘅吉格");
+        sumBits.push("值符" + c.zhiFuStar + "落" + QM_PAL_NAME[c.zhiFuPal] + "、值使" + c.zhiShiDoor + "門落" + QM_PAL_NAME[c.zhiShiPal] + "，係成盤主軸");
+        $("qm-read").innerHTML = "<h3>逐宮解讀</h3>" +
+          '<p class="qr-sum">' + sumBits.join("；") + "。</p>" +
+          QM_ORDER.map(function (p) {
+            var r = reads[p];
+            var head = p === 5 ? "中五宮 · 天禽星" : QM_PAL_NAME[p] + " · " + c.doors[p] + "門 " + c.stars[p] + "星 " + c.gods[p];
+            var badge = '<span class="luck ' + (r.rating === "吉" ? "luck-ji" : r.rating === "凶" ? "luck-xiong" : "luck-ban") + '">' + r.rating + "</span>";
+            var extra = p === 5 ? "中宮無門無神，天禽寄坤二宮，天盤干隨天芮同行。" : "";
+            return '<div class="qr-item"><b>' + head + "</b> " + badge + "<br>天盤 " + c.heaven[p] + " · 地盤 " + c.ground[p] + "。" + extra + r.text +
+              (r.pats.length ? "<br>格局：" + r.pats.join("；") + "。" : "") + "</div>";
+          }).join("");
+        $("qm-plate-line").innerHTML = "今次起盤：<b>" + y + "/" + pad2(m) + "/" + pad2(d) + " " + pad2(hr) + ":" + pad2(mi) + " · " + BRANCHES[c.hb] + "時 · " + (c.yang ? "陽遁" : "陰遁") + " " + c.ju + " 局</b>（" + c.term + " · " + c.yuan + "）— 以下號碼由此盤而出，同一個問事時間重計永遠同一組，唔係隨機。";
+        $("qm-rule").innerHTML = "取號規則：吉門優先次序 <strong>生門 → 開門 → 休門</strong>；每宮以宮位數為基數，+9 遞增（例如八宮：8、17、26、35、44），攞晒 1–49 內嘅號碼，逐宮補足，再由小到大排，按你揀嘅數量攞最前嗰啲（單式／複式 6／7／8 個；膽拖就膽數 ＋ 你揀嘅腳數，最多 12 隻腳）。攞嘅數量多過吉門宮號碼嗰陣，會按其餘門嘅吉凶次序（半吉門 → 凶門）逐宮補足。金框係吉門落宮。盤面按真節氣、拆補法三元同旬首正法起局，解讀屬坊間奇門通說；號碼純屬趣味推演 — 奇門盤點轉，攪珠機都唔會跟住轉。";
         $("qm-out").classList.remove("hidden");
         renderBet("qm", QM, QM_POOL);
       }
