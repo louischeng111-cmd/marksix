@@ -2560,30 +2560,9 @@
         }
         return weightedSample(w, rand, cnt, keepOrder); // hot / cold / master / random（w 全 1）
       }
-      function qimenDrawPool(y, m, d) { // 奇門遁甲攞號池：用指定日子當日 21:30（攪珠時間，亥時）起盤，同玄學分頁 computeQimenAt／runQimen 同一套簡化算法；
-        // 吉門宮（生→開→休）排最前，其餘宮按門吉凶（半吉→凶）補足，攞晒 1–49 內號碼（中五宮冇門，佢嗰組號碼唔入池，同玄學卡一致）。純跟日子計，冇隨機成分。
-        var hr = 21;
-        var yang = (m === 12 && d >= 22) || m < 6 || (m === 6 && d < 21);
-        var nDays = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1900, 0, 1)) / 86400000);
-        var idx60 = (((10 + nDays) % 60) + 60) % 60;
-        var ju = idx60 % 9 + 1;
-        var dayP = dayPillar(y, m, d);
-        var hb = Math.floor(((hr + 1) % 24) / 2);
-        var INSTR = ["戊", "己", "庚", "辛", "壬", "癸", "丁", "丙", "乙"], ground = {}, k, pal;
-        for (k = 0; k < 9; k++) { pal = (((ju - 1 + (yang ? k : -k)) % 9) + 9) % 9 + 1; ground[pal] = INSTR[k]; }
-        function findPal(ch) { for (var p = 1; p <= 9; p++) if (ground[p] === ch) return p; return 5; }
-        var pWu = findPal("戊"); if (pWu === 5) pWu = 2;
-        var doors = rotateRing(QM_DOOR, QM_RING.indexOf(QM_BRANCH_PAL[hb]) - QM_RING.indexOf(pWu));
-        var doorRank = { "生": 0, "開": 1, "休": 2 };
-        var good = QM_RING.filter(function (p) { return doorRank[doors[p]] !== undefined; })
-          .sort(function (a, b) { return doorRank[doors[a]] - doorRank[doors[b]]; });
-        var pool = [];
-        good.forEach(function (p) { for (var x = p; x <= 49; x += 9) pool.push(x); });
-        var luckRank = { "半吉": 0, "凶": 1 };
-        var others = QM_RING.filter(function (p) { return doorRank[doors[p]] === undefined; })
-          .sort(function (a, b) { return luckRank[QM_DOOR_LUCK[doors[a]]] - luckRank[QM_DOOR_LUCK[doors[b]]]; });
-        others.forEach(function (p) { for (var x = p; x <= 49; x += 9) pool.push(x); });
-        return pool;
+      function qimenDrawPool(y, m, d) { // 奇門遁甲攞號池：用指定日子當日 21:30（攪珠時間，亥時）起盤，直接調玄學分頁奇門卡嘅正法 qmBuildChart（真節氣＋拆補法三元＋旬首值符值使）攞完整號碼池；
+        // 池嘅結構同 qmBuildChart 一致：吉門宮（生→開→休）排最前，其餘宮按門吉凶（半吉→凶）補足，攞晒 1–49 內號碼（中五宮冇門，佢嗰組號碼唔入池）。純跟日子計，冇隨機成分。
+        return qmBuildChart(y, m, d, 21, 30).pool;
       }
 
       /* ============ 預測實驗室 ============ */
@@ -2592,7 +2571,7 @@
         { id: "cold", name: "冷門回補", desc: "按遺漏期數加權 — 越耐冇出權重越高，即係「賭徒謬誤」嘅代表作。" },
         { id: "balanced", name: "均衡分佈", desc: "單雙各半、大小各半、和值貼近歷史中位數，睇落最「平均」嘅一注。" },
         { id: "mystic", name: "玄學命理", desc: "按下期攪珠日嘅日干五行相生加權生成（旺 4 : 喜 2.5）— 同玄學分頁「五行號」同一套推法。" },
-        { id: "qimen", name: "奇門遁甲", desc: "用下期攪珠日當日（21:30 攪珠時間）起奇門盤，攞吉門（生門 → 開門 → 休門）落宮號碼，唔夠數再按其餘門吉凶補足 — 同玄學分頁「奇門遁甲」同一套簡化起盤法，純跟日子計。" },
+        { id: "qimen", name: "奇門遁甲", desc: "用下期攪珠日當日（21:30 攪珠時間）起奇門盤，攞吉門（生門 → 開門 → 休門）落宮號碼，唔夠數再按其餘門吉凶補足 — 同玄學分頁「奇門遁甲」同一套正法起盤（真節氣＋拆補法三元＋旬首值符值使），純跟日子計。" },
         { id: "master", name: "大師混合", desc: "熱門頻率 ＋ 冷門遺漏雙加權混合，自稱集兩家大成 — 回測會驗證佢有冇料到。" }
       ];
       /* ============ 組合複製（貼去「對獎」分頁用） ============ */
@@ -3420,28 +3399,15 @@
         else { fav = [EL_GEN_BY[dayEl], dayEl, EL_GEN[dayEl]]; favRole = ["生我（印）", "本氣（比劫）", "我生（食傷）"]; }
         return { dayStem: STEMS[dp.stem], dayEl: dayEl, strong: strong, fav: fav, favRole: favRole };
       }
-      function computeQimen() { // 同 runQimen 相同算法，只回傳吉門宮號碼池
+      function computeQimen() { // 直接調奇門卡正法 qmBuildChart 取盤（同 runQimen 同一盤源），只回傳吉門宮號碼池畀合參計分用
         var v = $("qm-time").value;
         if (!v) return null;
         var parts = v.split("T"), dd = parts[0].split("-").map(Number), tt = (parts[1] || "21:30").split(":").map(Number);
-        var y = dd[0], m = dd[1], d = dd[2], hr = tt[0] || 0;
-        var yang = (m === 12 && d >= 22) || m < 6 || (m === 6 && d < 21);
-        var nDays = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1900, 0, 1)) / 86400000);
-        var idx60 = (((10 + nDays) % 60) + 60) % 60;
-        var ju = idx60 % 9 + 1;
-        var dayP = dayPillar(y, m, d);
-        var hb = Math.floor(((hr + 1) % 24) / 2);
-        var INSTR = ["戊", "己", "庚", "辛", "壬", "癸", "丁", "丙", "乙"], ground = {}, k, pal;
-        for (k = 0; k < 9; k++) { pal = (((ju - 1 + (yang ? k : -k)) % 9) + 9) % 9 + 1; ground[pal] = INSTR[k]; }
-        function findPal(ch) { for (var p = 1; p <= 9; p++) if (ground[p] === ch) return p; return 5; }
-        var pWu = findPal("戊"); if (pWu === 5) pWu = 2;
-        var doors = rotateRing(QM_DOOR, QM_RING.indexOf(QM_BRANCH_PAL[hb]) - QM_RING.indexOf(pWu));
-        var doorRank = { "生": 0, "開": 1, "休": 2 };
-        var good = QM_RING.filter(function (p) { return doorRank[doors[p]] !== undefined; })
-          .sort(function (a, b) { return doorRank[doors[a]] - doorRank[doors[b]]; });
+        var y = dd[0], m = dd[1], d = dd[2], hr = tt[0] || 0, mi = tt[1] || 0;
+        var c = qmBuildChart(y, m, d, hr, mi);
         var pool = [];
-        good.forEach(function (p) { for (var x = p; x <= 49; x += 9) pool.push(x); });
-        return { yang: yang, ju: ju, dayGz: gz(dayP), good: good, doors: doors, pool: pool };
+        c.good.forEach(function (p) { for (var x = p; x <= 49; x += 9) pool.push(x); }); // 吉門宮號碼（生→開→休次序，同盤入面 pool 嘅頭段一致）
+        return { yang: c.yang, ju: c.ju, dayGz: gz(c.dayP), good: c.good, doors: c.doors, pool: pool };
       }
       function comboPool(bz, qm) { // 雙合號（吉門宮 ∩ 喜用五行）最前，其次只屬喜用五行，再其次只係吉門宮，最後其餘號碼補足
         var favW = {}; bz.fav.forEach(function (e, i) { favW[e] = 3 - i; });
@@ -3483,24 +3449,11 @@
       runCombo();
 
       /* ============ 攪珠日三合（攪珠日 × 出身八字 × 奇門遁甲） ============ */
-      function computeQimenAt(y, m, d, hr) { // 同 computeQimen 相同算法，但日子時間由參數入（查詢日期＋時間）
-        var yang = (m === 12 && d >= 22) || m < 6 || (m === 6 && d < 21);
-        var nDays = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1900, 0, 1)) / 86400000);
-        var idx60 = (((10 + nDays) % 60) + 60) % 60;
-        var ju = idx60 % 9 + 1;
-        var dayP = dayPillar(y, m, d);
-        var hb = Math.floor(((hr + 1) % 24) / 2);
-        var INSTR = ["戊", "己", "庚", "辛", "壬", "癸", "丁", "丙", "乙"], ground = {}, k, pal;
-        for (k = 0; k < 9; k++) { pal = (((ju - 1 + (yang ? k : -k)) % 9) + 9) % 9 + 1; ground[pal] = INSTR[k]; }
-        function findPal(ch) { for (var p = 1; p <= 9; p++) if (ground[p] === ch) return p; return 5; }
-        var pWu = findPal("戊"); if (pWu === 5) pWu = 2;
-        var doors = rotateRing(QM_DOOR, QM_RING.indexOf(QM_BRANCH_PAL[hb]) - QM_RING.indexOf(pWu));
-        var doorRank = { "生": 0, "開": 1, "休": 2 };
-        var good = QM_RING.filter(function (p) { return doorRank[doors[p]] !== undefined; })
-          .sort(function (a, b) { return doorRank[doors[a]] - doorRank[doors[b]]; });
+      function computeQimenAt(y, m, d, hr, mi) { // 直接調奇門卡正法 qmBuildChart 取盤，日子時間由參數入（查詢日期＋時間，mi 冇傳就當 0 分）
+        var c = qmBuildChart(y, m, d, hr, mi || 0);
         var pool = [];
-        good.forEach(function (p) { for (var x = p; x <= 49; x += 9) pool.push(x); });
-        return { yang: yang, ju: ju, dayGz: gz(dayP), hb: hb, good: good, doors: doors, pool: pool };
+        c.good.forEach(function (p) { for (var x = p; x <= 49; x += 9) pool.push(x); }); // 吉門宮號碼（生→開→休次序，同盤入面 pool 嘅頭段一致）
+        return { yang: c.yang, ju: c.ju, dayGz: gz(c.dayP), hb: c.hb, good: c.good, doors: c.doors, pool: pool };
       }
       var DC = { cnt: 6, mode: "multi", bankers: 2, legs: 6 }, DC_POOL = null;
       $("dc-betctl").innerHTML = betSegsHTML("dc");
@@ -3517,7 +3470,7 @@
           var qp = qv.split("T"), qdd = qp[0].split("-").map(Number), qtt = (qp[1] || "00:00").split(":").map(Number);
           qy = qdd[0]; qmo = qdd[1]; qd = qdd[2]; qhr = qtt[0] || 0; qmin = qtt[1] || 0;
         } else { var nw = new Date(); qy = nw.getFullYear(); qmo = nw.getMonth() + 1; qd = nw.getDate(); qhr = nw.getHours(); qmin = nw.getMinutes(); }
-        var qm = computeQimenAt(qy, qmo, qd, qhr); // 奇門用查詢時間起盤（唔再固定攪珠日 21:30）
+        var qm = computeQimenAt(qy, qmo, qd, qhr, qmin); // 奇門用查詢時間起盤（唔再固定攪珠日 21:30）
         var drawP = dayPillar(dy, dm, dd2);
         var dayEl = STEM_EL[drawP.stem]; // 攪珠日日干五行＝當日旺氣
         var genByEl = EL_GEN_BY[dayEl]; // 生日干者（印）
